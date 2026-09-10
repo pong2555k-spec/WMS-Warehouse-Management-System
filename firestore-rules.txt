@@ -1,0 +1,36 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ✅ Allow authenticated users to read and write all data
+    // This is a simple rule for testing/development
+    // For production, use more restrictive rules (see SECURITY.md)
+    
+    match /{document=**} {
+      allow read, write: if request.auth != null;
+    }
+  }
+}
+
+// ============================================
+// PRODUCTION RULES (More Secure)
+// ============================================
+// For production, replace the above with:
+/*
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Main data for WMS app - only authenticated users
+    match /artifacts/{namespace}/public/data/wms_database/main_state {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && request.auth.uid != null;
+    }
+    
+    // Audit logs - read for authenticated, write for backend only
+    match /artifacts/{namespace}/public/data/wms_database/audit_logs/{log} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null;
+      allow update, delete: if false;
+    }
+  }
+}
+*/
