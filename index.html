@@ -1,0 +1,673 @@
+<!DOCTYPE html>
+<html lang="th" class="h-full bg-slate-100">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Warehouse Management System (WMS) - Smart Logistics Portal</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans+Thai:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#f0fdf4',
+                            100: '#dcfce7',
+                            600: '#16a34a',
+                            700: '#15803d',
+                            darkGreen: '#1b4d3e',
+                            headerGreen: '#23594b',
+                            accent: '#0d9488'
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'Noto Sans Thai', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { font-family: 'Inter', 'Noto Sans Thai', sans-serif; }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #f1f5f9; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        .animate-fade-in {
+            animation: fadeIn 0.25s ease-in-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(4px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body class="h-full flex flex-col bg-slate-100 text-slate-800 antialiased overflow-x-hidden">
+    <!-- LOGIN VIEW -->
+    <div id="login-view" class="fixed inset-0 z-50 bg-brand-darkGreen flex items-center justify-center p-4">
+        <div class="absolute inset-0 opacity-10 bg-[radial-gradient(#ffffff_1px,transparent_1px)] [background-size:18px_18px]"></div>
+        <div class="bg-white rounded-2xl max-w-md w-full shadow-2xl p-8 relative z-10">
+            <div class="text-center mb-8">
+                <div class="w-16 h-16 bg-brand-darkGreen text-white rounded-2xl mx-auto flex items-center justify-center text-2xl shadow-lg mb-4">
+                    <i class="fa-solid fa-warehouse"></i>
+                </div>
+                <h1 class="text-xl font-bold text-slate-800">WMS PORTAL LOGIN</h1>
+                <p class="text-xs text-slate-500 mt-1">ระบบบริหารจัดการคลังสินค้าและบรรจุภัณฑ์</p>
+            </div>
+            <form onsubmit="handleLogin(event)" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">Username</label>
+                    <input type="text" id="login-username" required placeholder="เช่น admin" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-darkGreen">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">Password</label>
+                    <input type="password" id="login-password" required placeholder="••••••••" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-darkGreen">
+                </div>
+                <div id="login-error" class="hidden text-xs text-rose-600 font-medium bg-rose-50 border border-rose-200 rounded-lg px-3 py-2"></div>
+                <button type="submit" class="w-full py-2.5 bg-brand-darkGreen hover:bg-brand-headerGreen text-white font-bold rounded-lg text-sm shadow-md transition flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-right-to-bracket"></i>
+                    <span>เข้าสู่ระบบ (Sign In)</span>
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <div id="app" class="flex flex-col min-h-screen">
+        <!-- HEADER -->
+        <header class="bg-brand-darkGreen text-white h-14 flex items-center justify-between px-4 sticky top-0 z-30 shadow-md">
+            <div class="flex items-center space-x-3">
+                <button id="toggle-sidebar-btn" class="p-1.5 rounded-lg text-emerald-200 hover:text-white hover:bg-brand-headerGreen transition-colors focus:outline-none">
+                    <i class="fa-solid fa-bars text-lg"></i>
+                </button>
+                <div class="flex items-center space-x-2">
+                    <span class="bg-emerald-500 text-slate-900 font-bold px-2 py-0.5 rounded text-xs tracking-wider uppercase">WMS Portal</span>
+                    <h1 id="header-app-title" class="font-bold tracking-wide text-sm md:text-base hidden sm:block">PACKAGING & MATERIAL MANAGEMENT</h1>
+                </div>
+            </div>
+            <div class="flex items-center space-x-4 text-sm">
+                <div id="sync-status" class="flex items-center space-x-1.5 text-xs text-emerald-200 bg-brand-headerGreen/80 px-2.5 py-1 rounded-full border border-emerald-500/30 max-w-[140px] sm:max-w-none">
+                    <span class="w-2 h-2 rounded-full bg-amber-400 animate-pulse flex-shrink-0" id="sync-dot"></span>
+                    <span id="sync-text" class="truncate" title="Connecting Sync...">Connecting Sync...</span>
+                </div>
+                <div id="system-clock" class="hidden md:flex items-center space-x-2 text-xs text-emerald-100 bg-brand-headerGreen/60 px-3 py-1 rounded-full border border-emerald-600/30">
+                    <i class="fa-regular fa-clock"></i>
+                    <span id="clock-display">Loading...</span>
+                </div>
+                <div class="flex items-center space-x-2 border-l border-emerald-700/60 pl-3">
+                    <div class="w-8 h-8 rounded-full bg-emerald-600 flex items-center justify-center font-bold text-xs ring-2 ring-emerald-400/40">
+                        <i class="fa-solid fa-user"></i>
+                    </div>
+                    <div class="hidden lg:block text-left text-xs">
+                        <p id="user-name-display" class="font-semibold leading-tight">Guest</p>
+                        <p id="user-role-display" class="text-emerald-200 text-[10px]">Not signed in</p>
+                    </div>
+                    <button onclick="handleLogout()" title="Logout" class="p-1.5 rounded-lg text-emerald-200 hover:text-white hover:bg-brand-headerGreen transition-colors">
+                        <i class="fa-solid fa-right-from-bracket"></i>
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- MAIN CONTENT -->
+        <div class="flex flex-1 relative overflow-hidden">
+            <!-- SIDEBAR -->
+            <aside id="sidebar" class="w-64 bg-slate-900 text-slate-300 flex-shrink-0 flex flex-col transition-all duration-300 z-20 shadow-xl border-r border-slate-800">
+                <nav class="flex-1 overflow-y-auto py-4 px-3 space-y-1 text-sm font-medium">
+                    <button onclick="switchView('dashboard')" class="nav-item w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg transition-colors hover:bg-slate-800 text-slate-300" data-view="dashboard">
+                        <i class="fa-solid fa-chart-line w-5 text-emerald-400"></i>
+                        <span>Dashboard (แผงควบคุม)</span>
+                    </button>
+                    <div class="py-1">
+                        <button onclick="toggleSubmenu('inbound-sub')" class="w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-slate-300 hover:bg-slate-800 transition-colors">
+                            <div class="flex items-center space-x-3">
+                                <i class="fa-solid fa-truck-ramp-box w-5 text-teal-400"></i>
+                                <span>Inbound (รับสินค้าเข้า)</span>
+                            </div>
+                            <i class="fa-solid fa-chevron-down text-xs transition-transform duration-200" id="inbound-sub-icon"></i>
+                        </button>
+                        <div id="inbound-sub" class="pl-8 pt-1 space-y-1 hidden">
+                            <button onclick="switchView('inbound-gr')" class="nav-item w-full text-left px-3 py-2 rounded-md text-xs hover:bg-slate-800 text-slate-400 hover:text-white" data-view="inbound-gr">
+                                <i class="fa-solid fa-plus-circle mr-2 text-[10px]"></i>GR Stock (เพิ่มสต็อก)
+                            </button>
+                            <button onclick="switchView('inbound-history')" class="nav-item w-full text-left px-3 py-2 rounded-md text-xs hover:bg-slate-800 text-slate-400 hover:text-white" data-view="inbound-history">
+                                <i class="fa-solid fa-history mr-2 text-[10px]"></i>GR History (ประวัติรับเข้า)
+                            </button>
+                        </div>
+                    </div>
+                    <div class="py-1">
+                        <button onclick="toggleSubmenu('outbound-sub')" class="w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-slate-300 hover:bg-slate-800 transition-colors">
+                            <div class="flex items-center space-x-3">
+                                <i class="fa-solid fa-boxes-packing w-5 text-amber-400"></i>
+                                <span>Outbound (เบิกจ่ายสินค้า)</span>
+                            </div>
+                            <i class="fa-solid fa-chevron-down text-xs transition-transform duration-200" id="outbound-sub-icon"></i>
+                        </button>
+                        <div id="outbound-sub" class="pl-8 pt-1 space-y-1 hidden">
+                            <button onclick="switchView('outbound-issue')" class="nav-item w-full text-left px-3 py-2 rounded-md text-xs hover:bg-slate-800 text-slate-400 hover:text-white" data-view="outbound-issue">
+                                <i class="fa-solid fa-hand-holding-box mr-2 text-[10px]"></i>Goods Issue (เบิกสินค้า)
+                            </button>
+                            <button onclick="switchView('outbound-history')" class="nav-item w-full text-left px-3 py-2 rounded-md text-xs hover:bg-slate-800 text-slate-400 hover:text-white" data-view="outbound-history">
+                                <i class="fa-solid fa-clock-rotate-left mr-2 text-[10px]"></i>GI History (ประวัติเบิกจ่าย)
+                            </button>
+                        </div>
+                    </div>
+                    <button onclick="switchView('inventory')" class="nav-item w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg transition-colors hover:bg-slate-800 text-slate-300" data-view="inventory">
+                        <i class="fa-solid fa-warehouse w-5 text-indigo-400"></i>
+                        <span>Storage & Inventory</span>
+                    </button>
+                    <button onclick="switchView('master-data')" class="nav-item w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg transition-colors hover:bg-slate-800 text-slate-300" data-view="master-data">
+                        <i class="fa-solid fa-database w-5 text-sky-400"></i>
+                        <span>Master Data (ข้อมูลหลัก)</span>
+                    </button>
+                    <div class="pt-4 mt-4 border-t border-slate-800"></div>
+                    <button id="nav-user-management" onclick="switchView('user-management')" class="nav-item hidden w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg transition-colors hover:bg-slate-800 text-slate-300" data-view="user-management">
+                        <i class="fa-solid fa-users-gear w-5 text-rose-400"></i>
+                        <span>User Management (จัดการผู้ใช้)</span>
+                    </button>
+                    <button onclick="switchView('settings')" class="nav-item w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg transition-colors hover:bg-slate-800 text-slate-300" data-view="settings">
+                        <i class="fa-solid fa-sliders w-5 text-emerald-400"></i>
+                        <span>Settings (ตั้งค่าระบบ)</span>
+                    </button>
+                </nav>
+                <div class="p-3 bg-slate-950/60 border-t border-slate-800/80 text-[11px] text-slate-400 flex items-center justify-between">
+                    <div>
+                        <p class="font-medium text-slate-300">WMS Realtime Sync v3.0</p>
+                        <p class="text-[10px] text-slate-500">Cloud Storage Active</p>
+                    </div>
+                    <button onclick="promptResetSystem()" class="p-1.5 hover:text-red-400 transition-colors" title="Reset Demo Data">
+                        <i class="fa-solid fa-rotate-right"></i>
+                    </button>
+                </div>
+            </aside>
+
+            <!-- MAIN PANEL -->
+            <main class="flex-1 overflow-y-auto p-3 sm:p-6 bg-slate-100 flex flex-col justify-between">
+                <div id="content-container" class="max-w-7xl mx-auto w-full space-y-6">
+                    <!-- DASHBOARD VIEW -->
+                    <section id="view-dashboard" class="view-panel animate-fade-in hidden">
+                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-4 rounded-xl shadow-sm border border-slate-200">
+                            <div>
+                                <h2 class="text-xl font-bold text-slate-800 flex items-center">
+                                    <i class="fa-solid fa-gauge-high text-brand-darkGreen mr-2.5"></i>
+                                    Overview Dashboard (ภาพรวมระบบ)
+                                </h2>
+                                <p class="text-xs text-slate-500 mt-0.5">ภาพรวมคลังสินค้า และการปรับอัปเดตแบบเรียลไทม์ทุกอุปกรณ์</p>
+                            </div>
+                            <div class="flex items-center space-x-2">
+                                <button onclick="refreshDashboard()" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-lg transition border border-slate-300 flex items-center">
+                                    <i class="fa-solid fa-sync text-xs mr-1.5"></i> Refresh
+                                </button>
+                                <button onclick="switchView('inbound-gr')" class="px-3 py-1.5 bg-brand-darkGreen hover:bg-brand-headerGreen text-white text-xs font-semibold rounded-lg transition shadow-sm flex items-center">
+                                    <i class="fa-solid fa-plus mr-1.5"></i> New GR Stock
+                                </button>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                            <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex items-center justify-between">
+                                <div>
+                                    <p class="text-xs font-medium text-slate-500 uppercase tracking-wide">Total Units in Stock</p>
+                                    <h3 id="kpi-total-items" class="text-2xl font-extrabold text-slate-800 mt-1">0</h3>
+                                    <p class="text-[11px] text-emerald-600 mt-1 flex items-center"><i class="fa-solid fa-arrow-up mr-1"></i> Live Cloud Sync</p>
+                                </div>
+                                <div class="w-12 h-12 bg-emerald-50 rounded-xl flex items-center justify-center text-emerald-600 text-xl font-bold">
+                                    <i class="fa-solid fa-boxes-stacked"></i>
+                                </div>
+                            </div>
+                            <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex items-center justify-between">
+                                <div>
+                                    <p class="text-xs font-medium text-slate-500 uppercase tracking-wide">Inbound Records (GR)</p>
+                                    <h3 id="kpi-today-inbound" class="text-2xl font-extrabold text-teal-700 mt-1">0</h3>
+                                    <p class="text-[11px] text-teal-600 mt-1"><span id="kpi-gr-count">0</span> Transactions</p>
+                                </div>
+                                <div class="w-12 h-12 bg-teal-50 rounded-xl flex items-center justify-center text-teal-600 text-xl font-bold">
+                                    <i class="fa-solid fa-arrow-down-left-and-arrow-up-right-to-center"></i>
+                                </div>
+                            </div>
+                            <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex items-center justify-between">
+                                <div>
+                                    <p class="text-xs font-medium text-slate-500 uppercase tracking-wide">Outbound Records (GI)</p>
+                                    <h3 id="kpi-today-outbound" class="text-2xl font-extrabold text-amber-600 mt-1">0</h3>
+                                    <p class="text-[11px] text-amber-600 mt-1"><span id="kpi-gi-count">0</span> Transactions</p>
+                                </div>
+                                <div class="w-12 h-12 bg-amber-50 rounded-xl flex items-center justify-center text-amber-600 text-xl font-bold">
+                                    <i class="fa-solid fa-truck-fast"></i>
+                                </div>
+                            </div>
+                            <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex items-center justify-between">
+                                <div>
+                                    <p class="text-xs font-medium text-slate-500 uppercase tracking-wide">Low Stock Alerts</p>
+                                    <h3 id="kpi-low-stock" class="text-2xl font-extrabold text-rose-600 mt-1">0</h3>
+                                    <p class="text-[11px] text-rose-500 mt-1">Requires reorder</p>
+                                </div>
+                                <div class="w-12 h-12 bg-rose-50 rounded-xl flex items-center justify-center text-rose-600 text-xl font-bold">
+                                    <i class="fa-solid fa-triangle-exclamation"></i>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                            <div class="lg:col-span-2 bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                                <div class="px-5 py-4 border-b border-slate-200 flex justify-between items-center bg-slate-50">
+                                    <h3 class="font-bold text-slate-800 text-sm flex items-center">
+                                        <i class="fa-solid fa-list-check text-slate-500 mr-2"></i> Current Packaging Stock Master Status
+                                    </h3>
+                                    <button onclick="switchView('inventory')" class="text-xs text-brand-darkGreen font-semibold hover:underline">View All →</button>
+                                </div>
+                                <div class="overflow-x-auto">
+                                    <table class="w-full text-left text-xs text-slate-600">
+                                        <thead class="bg-slate-100 text-slate-700 uppercase tracking-wider font-semibold border-b border-slate-200">
+                                            <tr>
+                                                <th class="px-4 py-3">Code / Item</th>
+                                                <th class="px-4 py-3">Type</th>
+                                                <th class="px-4 py-3">Location</th>
+                                                <th class="px-4 py-3 text-right">Available Qty</th>
+                                                <th class="px-4 py-3 text-center">Status</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="dashboard-stock-tbody" class="divide-y divide-slate-200"></tbody>
+                                    </table>
+                                </div>
+                            </div>
+                            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4">
+                                <h3 class="font-bold text-slate-800 text-sm mb-3 flex items-center">
+                                    <i class="fa-solid fa-clock-rotate-left text-brand-darkGreen mr-2"></i> Live Activity Stream
+                                </h3>
+                                <div id="activity-logs-list" class="space-y-3 max-h-[380px] overflow-y-auto pr-1"></div>
+                            </div>
+                        </div>
+                    </section>
+                    <!-- End Dashboard -->
+                </div>
+                <footer class="mt-8 text-center text-xs text-slate-400 py-3 border-t border-slate-200">
+                    &copy; 2026 WMS Packaging Material Management Portal. Multi-device Realtime Sync Ready.
+                </footer>
+            </main>
+        </div>
+    </div>
+
+    <!-- TOAST CONTAINER -->
+    <div id="toast-container" class="fixed bottom-5 right-5 z-50 space-y-2 pointer-events-none"></div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // ============================================================
+        // 🔥 FIREBASE CONFIG - EDIT THIS WITH YOUR FIREBASE DETAILS
+        // ============================================================
+        const FIREBASE_CONFIG = {
+            apiKey: "YOUR_API_KEY",
+            authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+            projectId: "YOUR_PROJECT_ID",
+            storageBucket: "YOUR_PROJECT_ID.appspot.com",
+            messagingSenderId: "YOUR_SENDER_ID",
+            appId: "YOUR_APP_ID"
+        };
+        // ============================================================
+
+        const FIREBASE_APP_NAMESPACE = "wms-warehouse-app";
+
+        const DEFAULT_MASTER_ITEMS = [
+            { code: "PKG-BOX-001", type: "Carton Box", desc: "Corrugated Box Heavy Duty", spec: "400x300x200 mm", vendor: "Samsung Electronics Logistics", defaultLocation: "Rack A-01" },
+            { code: "PKG-PLT-002", type: "Wooden Pallet", desc: "Euro Standard Wooden Pallet", spec: "1200x800 mm", vendor: "Thai Pallet Supply Co., Ltd.", defaultLocation: "Floor Zone B" },
+            { code: "PKG-TRY-003", type: "Plastic Tray", desc: "ESD Anti-Static Tray", spec: "300x200x50 mm", vendor: "Siam Plastics Industry", defaultLocation: "Rack A-02" },
+            { code: "PKG-FLM-004", type: "Stretch Film", desc: "Transparent LLDPE Wrap", spec: "500mm x 300m", vendor: "Packaging World Thai", defaultLocation: "Rack B-01" }
+        ];
+
+        const DEFAULT_INVENTORY = [
+            { code: "PKG-BOX-001", location: "Rack A-01", qty: 250, minQty: 20 },
+            { code: "PKG-PLT-002", location: "Floor Zone B", qty: 45, minQty: 10 },
+            { code: "PKG-TRY-003", location: "Rack A-02", qty: 8, minQty: 15 },
+            { code: "PKG-FLM-004", location: "Rack B-01", qty: 120, minQty: 25 }
+        ];
+
+        const DEFAULT_LOCATIONS = ["Rack A-01", "Rack A-02", "Rack B-01", "Floor Zone B", "Staging Area 1", "Buffer Bay 03"];
+        const DEFAULT_CATEGORIES = ["Carton Box", "Wooden Pallet", "Plastic Tray", "Stretch Film", "Bubble Wrap", "Foam Sheet"];
+        const DEFAULT_USERS = [
+            { id: "U1", username: "admin", password: "admin123", name: "ผู้ดูแลระบบ (System Admin)", role: "Admin" },
+            { id: "U2", username: "anyawee.t", password: "1234", name: "Anyawee T.", role: "Assistant Manager" },
+            { id: "U3", username: "staff01", password: "1234", name: "เจ้าหน้าที่คลังสินค้า", role: "Warehouse Staff" }
+        ];
+
+        window.wmsData = {
+            masterItems: DEFAULT_MASTER_ITEMS,
+            inventory: DEFAULT_INVENTORY,
+            grHistory: [],
+            giHistory: [],
+            systemLocations: DEFAULT_LOCATIONS,
+            systemCategories: DEFAULT_CATEGORIES,
+            systemUsers: DEFAULT_USERS,
+            activityLogs: [{ text: "System initialized with production configuration", time: "Just now", type: "info" }],
+            globalMinThreshold: 10,
+            systemTitle: "PACKAGING & MATERIAL MANAGEMENT"
+        };
+
+        window.tempGrItems = [];
+        window.tempGiItems = [];
+        window.currentUser = null;
+        let appInitialized = false;
+        let db = null;
+        let auth = null;
+        let docRef = null;
+
+        async function initFirebaseSync() {
+            try {
+                const isConfigured = FIREBASE_CONFIG.apiKey && !FIREBASE_CONFIG.apiKey.startsWith("YOUR_");
+
+                if (!isConfigured) {
+                    console.warn("Firebase not configured — running in Local Storage mode");
+                    updateSyncStatus(false, "Local Mode (No Cloud Config)");
+                    loadLocalStorage();
+                    return;
+                }
+
+                const app = initializeApp(FIREBASE_CONFIG);
+                auth = getAuth(app);
+                db = getFirestore(app);
+
+                await signInAnonymously(auth);
+                docRef = doc(db, 'artifacts', FIREBASE_APP_NAMESPACE, 'public', 'data', 'wms_database', 'main_state');
+
+                onSnapshot(docRef, (snapshot) => {
+                    if (snapshot.exists()) {
+                        const cloudData = snapshot.data();
+                        if (cloudData) {
+                            window.wmsData = { ...window.wmsData, ...cloudData };
+                            renderAllViews();
+                            updateSyncStatus(true, "Cloud Sync Active");
+                        }
+                    } else {
+                        syncToFirestore();
+                        updateSyncStatus(true, "Cloud Sync Active");
+                    }
+                }, (error) => {
+                    console.error("Firestore error:", error);
+                    updateSyncStatus(false, `Sync Error: ${error.code || error.message}`);
+                    showToast(`Firestore sync error: ${error.code}`, "error");
+                    loadLocalStorage();
+                });
+            } catch (err) {
+                console.error("Firebase Init Failed:", err);
+                updateSyncStatus(false, `Init Error: ${err.code}`);
+                showToast(`Firebase init error: ${err.code}`, "error");
+                loadLocalStorage();
+            }
+        }
+
+        window.syncToFirestore = async function() {
+            if (docRef) {
+                try {
+                    await setDoc(docRef, window.wmsData);
+                } catch (e) {
+                    console.error("Error writing to cloud:", e);
+                    updateSyncStatus(false, `Write Error: ${e.code}`);
+                    showToast(`Failed to sync: ${e.code}`, "error");
+                    saveLocalStorage();
+                }
+            } else {
+                saveLocalStorage();
+            }
+        };
+
+        function updateSyncStatus(isLive, text) {
+            const dot = document.getElementById('sync-dot');
+            const txt = document.getElementById('sync-text');
+            if (dot) dot.className = `w-2 h-2 rounded-full flex-shrink-0 ${isLive ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'}`;
+            if (txt) { txt.textContent = text; txt.title = text; }
+        }
+
+        function loadLocalStorage() {
+            try {
+                const local = localStorage.getItem('wms_app_state');
+                if (local) {
+                    window.wmsData = JSON.parse(local);
+                }
+            } catch(e) {}
+            renderAllViews();
+        }
+
+        function saveLocalStorage() {
+            try {
+                localStorage.setItem('wms_app_state', JSON.stringify(window.wmsData));
+            } catch(e) {}
+        }
+
+        function startLiveClock() {
+            const clockEl = document.getElementById('clock-display');
+            const timestampEl = document.getElementById('gr-timestamp');
+            
+            function update() {
+                const now = new Date();
+                const str = now.toLocaleDateString('en-GB') + ', ' + now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+                if (clockEl) clockEl.textContent = str;
+            }
+            update();
+            setInterval(update, 1000);
+        }
+
+        window.switchView = function(viewId) {
+            if (viewId === 'user-management' && (!window.currentUser || window.currentUser.role !== 'Admin')) {
+                showToast("เฉพาะผู้ดูแลระบบ (Admin) เท่านั้น", "error");
+                return;
+            }
+            document.querySelectorAll('.view-panel').forEach(p => p.classList.add('hidden'));
+            const target = document.getElementById(`view-${viewId}`);
+            if (target) target.classList.remove('hidden');
+            
+            document.querySelectorAll('.nav-item').forEach(btn => {
+                if (btn.dataset.view === viewId) {
+                    btn.classList.add('bg-slate-800', 'text-white', 'font-semibold');
+                    btn.classList.remove('text-slate-300');
+                } else {
+                    btn.classList.remove('bg-slate-800', 'text-white', 'font-semibold');
+                    btn.classList.add('text-slate-300');
+                }
+            });
+
+            if (viewId === 'dashboard') refreshDashboard();
+        };
+
+        window.toggleSubmenu = function(id) {
+            const el = document.getElementById(id);
+            const icon = document.getElementById(`${id}-icon`);
+            if (el.classList.contains('hidden')) {
+                el.classList.remove('hidden');
+                if (icon) icon.classList.add('rotate-180');
+            } else {
+                el.classList.add('hidden');
+                if (icon) icon.classList.remove('rotate-180');
+            }
+        };
+
+        // AUTHENTICATION
+        window.handleLogin = function(e) {
+            e.preventDefault();
+            const username = document.getElementById('login-username').value.trim();
+            const password = document.getElementById('login-password').value.trim();
+            const errBox = document.getElementById('login-error');
+
+            const user = (window.wmsData.systemUsers || []).find(u => u.username === username && u.password === password);
+            if (user) {
+                window.currentUser = user;
+                localStorage.setItem('wms_session_user_id', user.id);
+                errBox.classList.add('hidden');
+                document.getElementById('login-view').classList.add('hidden');
+                applyRoleVisibility();
+                updateUserProfileUI();
+                renderAllViews();
+                showToast(`ยินดีต้อนรับคุณ ${user.name}`, "success");
+            } else {
+                errBox.textContent = "Username หรือ Password ไม่ถูกต้อง";
+                errBox.classList.remove('hidden');
+            }
+        };
+
+        window.handleLogout = function() {
+            if (!window.currentUser) return;
+            window.currentUser = null;
+            localStorage.removeItem('wms_session_user_id');
+            document.getElementById('login-view').classList.remove('hidden');
+            applyRoleVisibility();
+            updateUserProfileUI();
+            showToast("ออกจากระบบเรียบร้อยแล้ว", "info");
+        };
+
+        function updateUserProfileUI() {
+            const nameEl = document.getElementById('user-name-display');
+            const roleEl = document.getElementById('user-role-display');
+            if (window.currentUser) {
+                if (nameEl) nameEl.textContent = window.currentUser.username;
+                if (roleEl) roleEl.textContent = window.currentUser.role;
+            } else {
+                if (nameEl) nameEl.textContent = "Guest";
+                if (roleEl) roleEl.textContent = "Not signed in";
+            }
+        }
+
+        function applyRoleVisibility() {
+            const navUserMgmt = document.getElementById('nav-user-management');
+            if (!navUserMgmt) return;
+            if (window.currentUser && window.currentUser.role === 'Admin') {
+                navUserMgmt.classList.remove('hidden');
+            } else {
+                navUserMgmt.classList.add('hidden');
+            }
+        }
+
+        function tryAutoLogin() {
+            if (appInitialized) return;
+            appInitialized = true;
+            const savedId = localStorage.getItem('wms_session_user_id');
+            if (savedId) {
+                const user = (window.wmsData.systemUsers || []).find(u => u.id === savedId);
+                if (user) {
+                    window.currentUser = user;
+                    document.getElementById('login-view').classList.add('hidden');
+                    applyRoleVisibility();
+                    updateUserProfileUI();
+                    return;
+                }
+            }
+            document.getElementById('login-view').classList.remove('hidden');
+            applyRoleVisibility();
+            updateUserProfileUI();
+        }
+
+        window.renderAllViews = function() {
+            document.getElementById('header-app-title').textContent = window.wmsData.systemTitle || "PACKAGING & MATERIAL MANAGEMENT";
+            refreshDashboard();
+            tryAutoLogin();
+        };
+
+        window.refreshDashboard = function() {
+            const inventory = window.wmsData.inventory || [];
+            const grHistory = window.wmsData.grHistory || [];
+            const giHistory = window.wmsData.giHistory || [];
+            const masterItems = window.wmsData.masterItems || [];
+
+            const totalStockItems = inventory.reduce((sum, item) => sum + item.qty, 0);
+            const todayStr = new Date().toLocaleDateString('en-GB');
+            const todayGr = grHistory.filter(h => h.timestamp.includes(todayStr));
+            const todayGi = giHistory.filter(h => h.timestamp.includes(todayStr));
+            const totalInboundToday = todayGr.reduce((sum, h) => sum + h.qty, 0);
+            const totalOutboundToday = todayGi.reduce((sum, h) => sum + h.qty, 0);
+            const lowStockCount = inventory.filter(i => i.qty <= (i.minQty || window.wmsData.globalMinThreshold)).length;
+
+            document.getElementById('kpi-total-items').textContent = totalStockItems.toLocaleString();
+            document.getElementById('kpi-today-inbound').textContent = totalInboundToday.toLocaleString();
+            document.getElementById('kpi-today-outbound').textContent = totalOutboundToday.toLocaleString();
+            document.getElementById('kpi-gr-count').textContent = todayGr.length;
+            document.getElementById('kpi-gi-count').textContent = todayGi.length;
+            document.getElementById('kpi-low-stock').textContent = lowStockCount;
+
+            const tbody = document.getElementById('dashboard-stock-tbody');
+            if (tbody) {
+                tbody.innerHTML = inventory.slice(0, 5).map(item => {
+                    const master = masterItems.find(m => m.code === item.code);
+                    const isLow = item.qty <= (item.minQty || window.wmsData.globalMinThreshold);
+                    return `
+                        <tr class="hover:bg-slate-50 transition">
+                            <td class="px-4 py-3 font-semibold text-slate-800">${item.code} <span class="block text-[10px] text-slate-400 font-normal">${master ? master.desc : ''}</span></td>
+                            <td class="px-4 py-3 text-slate-500">${master ? master.type : 'Packaging'}</td>
+                            <td class="px-4 py-3"><span class="bg-slate-100 text-slate-600 px-2 py-0.5 rounded border border-slate-200 text-[11px]">${item.location}</span></td>
+                            <td class="px-4 py-3 text-right font-bold text-slate-800">${item.qty}</td>
+                            <td class="px-4 py-3 text-center">
+                                ${isLow ? `<span class="bg-rose-100 text-rose-700 px-2 py-0.5 rounded-full text-[10px] font-bold">Low Stock</span>` : `<span class="bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full text-[10px] font-bold">Normal</span>`}
+                            </td>
+                        </tr>
+                    `;
+                }).join('');
+            }
+        };
+
+        window.promptResetSystem = function() {
+            Swal.fire({
+                title: 'ยืนยันการคืนค่าเริ่มต้น?',
+                text: "ข้อมูลทั้งหมดจะถูกรีเซ็ตกลับเป็นค่าตั้งต้น",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmColor: '#d33',
+                cancelColor: '#3085d6',
+                confirmButtonText: 'ใช่, ล้างข้อมูล!',
+                cancelButtonText: 'ยกเลิก'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    window.wmsData = {
+                        masterItems: DEFAULT_MASTER_ITEMS,
+                        inventory: DEFAULT_INVENTORY,
+                        grHistory: [],
+                        giHistory: [],
+                        systemLocations: DEFAULT_LOCATIONS,
+                        systemCategories: DEFAULT_CATEGORIES,
+                        activityLogs: [{ text: "Database reset to factory default", time: new Date().toLocaleTimeString(), type: "warning" }],
+                        globalMinThreshold: 10,
+                        systemTitle: "PACKAGING & MATERIAL MANAGEMENT"
+                    };
+                    window.syncToFirestore();
+                    Swal.fire('Reset!', 'ระบบถูกรีเซ็ตเรียบร้อยแล้ว', 'success');
+                }
+            });
+        };
+
+        function showToast(message, type = "info") {
+            const toastContainer = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            
+            let bg = "bg-slate-800 text-white";
+            let icon = "fa-circle-info";
+            
+            if (type === "success") { bg = "bg-emerald-700 text-white"; icon = "fa-circle-check"; }
+            if (type === "error") { bg = "bg-rose-600 text-white"; icon = "fa-triangle-exclamation"; }
+
+            toast.className = `flex items-center space-x-3 px-4 py-3 rounded-lg shadow-lg text-xs font-medium transition-all duration-300 transform translate-y-2 opacity-0 pointer-events-auto ${bg}`;
+            toast.innerHTML = `<i class="fa-solid ${icon} text-sm"></i> <span>${message}</span>`;
+
+            toastContainer.appendChild(toast);
+
+            setTimeout(() => {
+                toast.classList.remove('translate-y-2', 'opacity-0');
+            }, 10);
+
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'translate-y-2');
+                setTimeout(() => toast.remove(), 300);
+            }, 3500);
+        }
+
+        // INITIALIZE APP
+        window.addEventListener('DOMContentLoaded', () => {
+            initFirebaseSync();
+            startLiveClock();
+            switchView('dashboard');
+            document.getElementById('toggle-sidebar-btn').addEventListener('click', () => {
+                document.getElementById('sidebar').classList.toggle('-ml-64');
+            });
+        });
+    </script>
+</body>
+</html>
